@@ -215,7 +215,7 @@ svg.i{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:1.75;str
 .bk .ba button{width:28px;height:28px;border-radius:14px;color:var(--muted);display:flex;align-items:center;justify-content:center}
 .bk .ba button:hover{background:var(--a3);color:var(--a1)}
 .bk .ba button.on{color:#D97706}
-#drop{position:fixed;inset:0;z-index:300;background:rgba(11,58,111,.72);color:#fff;display:flex;align-items:center;justify-content:center;font-size:22px;font-weight:700}
+#drop{pointer-events:none;position:fixed;inset:0;z-index:300;background:rgba(11,58,111,.72);color:#fff;display:flex;align-items:center;justify-content:center;font-size:22px;font-weight:700}
 #loading{position:absolute;inset:0;z-index:55;background:rgba(0,0,0,.35);display:flex;align-items:center;justify-content:center;color:#fff;font-weight:700}
 
 /* 책장 넘김: 제본선은 고정하고 넘어가는 장만 움직인다 */
@@ -448,10 +448,10 @@ let toastT;
 function toast(msg) { const t = $('#toast'); t.textContent = msg; t.classList.add('on'); clearTimeout(toastT); toastT = setTimeout(() => t.classList.remove('on'), 2200); }
 
 /* ---------- 책 열기 ---------- */
-async function openFiles(files) {
+async function openFiles(files, addOnly) {
   const list = [...files].filter(f => /pdf$/i.test(f.type) || /\.pdf$/i.test(f.name));
   if (!list.length) { toast('PDF 파일만 열 수 있습니다. 확장자가 .pdf인 파일을 선택해 주세요.'); return; }
-  if (list.length > 1) { for (const f of list) await addToLibrary(f); renderLib(); toast(`${list.length}권을 책꽂이에 담았습니다.`); return; }
+  if (list.length > 1 || addOnly) { for (const f of list) await addToLibrary(f); renderLib(); toast(`${list.length}권을 책꽂이에 담았습니다.`); return; }
   await openBookFromBlob(list[0], list[0].name);
 }
 async function addToLibrary(file) {
@@ -1124,7 +1124,7 @@ async function renderLib() {
   S.lib = ((await safe(DB.all('books'))) || []).sort((a, b) => (b.lastRead || b.added || 0) - (a.lastRead || a.added || 0));
   const lib = $('#lib');
   lib.innerHTML = `<div id="libHero"><h1>내 책꽂이</h1><p>PDF를 올리면 마지막으로 읽던 쪽부터 이어서 읽을 수 있습니다. 북마크와 메모는 이 브라우저에 저장됩니다.</p>
-  <div id="libBar"><button class="pill" id="lAdd">${ic('plus')}PDF 열기</button><input id="libQ" placeholder="책 이름 검색" value="${esc(libQ)}" aria-label="책 검색"><button class="pill" id="lImp" style="background:rgba(255,255,255,.2);color:#fff;box-shadow:none">${ic('upload')}백업 불러오기</button>${S.book ? `<button class="pill" id="lBack" style="background:rgba(255,255,255,.2);color:#fff;box-shadow:none">${ic('open')}읽던 책으로</button>` : ''}</div></div>
+  <div id="libBar"><button class="pill" id="lAdd">${ic('plus')}PDF 추가</button><input id="libQ" placeholder="책 이름 검색" value="${esc(libQ)}" aria-label="책 검색"><button class="pill" id="lImp" style="background:rgba(255,255,255,.2);color:#fff;box-shadow:none">${ic('upload')}백업 불러오기</button>${S.book ? `<button class="pill" id="lBack" style="background:rgba(255,255,255,.2);color:#fff;box-shadow:none">${ic('open')}읽던 책으로</button>` : ''}</div></div>
   <div id="libTabs">${[['all', '전체'], ['ing', '읽는 중'], ['done', '완독'], ['fav', '즐겨찾기']].map(([k, t]) => `<button data-t="${k}" class="${libTab === k ? 'on' : ''}">${t}</button>`).join('')}</div>
   <div id="shelf"></div>`;
   paintShelf();
@@ -1135,7 +1135,7 @@ async function renderLib() {
 function paintShelf() {
   const sh = $('#shelf'); const q = libQ.trim().toLowerCase();
   const list = S.lib.filter(b => (libTab === 'all' || (libTab === 'fav' ? b.fav : libTab === 'done' ? (b.progress || 0) >= .98 : (b.progress || 0) < .98 && (b.progress || 0) > 0)) && (!q || b.title.toLowerCase().includes(q)));
-  if (!list.length) { sh.style.display = 'block'; sh.innerHTML = `<div class="empty" style="padding:60px 0">${S.lib.length ? '조건에 맞는 책이 없습니다.<br>탭이나 검색어를 바꿔 보세요.' : '아직 담긴 책이 없습니다.<br>위의 PDF 열기를 누르거나 PDF 파일을 이 화면에 끌어다 놓으세요.'}</div>`; return; }
+  if (!list.length) { sh.style.display = 'block'; sh.innerHTML = `<div class="empty" style="padding:60px 0">${S.lib.length ? '조건에 맞는 책이 없습니다.<br>탭이나 검색어를 바꿔 보세요.' : '아직 담긴 책이 없습니다.<br>위의 PDF 추가를 누르거나 PDF 파일을 이 화면에 끌어다 놓으세요.'}</div>`; return; }
   sh.style.display = '';
   sh.innerHTML = list.map(b => { const pr = Math.round((b.progress || 0) * 100); return `<div class="bk" data-id="${b.id}"><div class="cv" tabindex="0" role="button" aria-label="${esc(b.title)} 열기">${b.cover ? `<img src="${b.cover}" alt="">` : `<div class="noimg">${esc(b.title)}</div>`}</div><div class="plank"></div><div class="info"><div class="tt">${esc(b.title)}</div><div class="sub">${b.pages}쪽 · ${pr >= 98 ? '완독' : pr ? pr + '% 읽음' : '새 책'}${b.lastRead ? ' · ' + new Date(b.lastRead).toLocaleDateString('ko-KR') : ''}</div><div class="bar"><i style="width:${pr}%"></i></div><div class="ba"><button data-a="fav" class="${b.fav ? 'on' : ''}" title="즐겨찾기" aria-label="즐겨찾기">${ic('star')}</button><button data-a="del" title="책꽂이에서 삭제" aria-label="삭제">${ic('trash')}</button></div></div></div>`; }).join('');
 }
@@ -1149,11 +1149,20 @@ $('#lib').addEventListener('keydown', e => { if (e.key === 'Enter' && e.target.c
 $('#bLib').onclick = async () => { hideSearchBar(); hidePop(); await flushBook(); renderLib(); $('#lib').classList.remove('hide'); };
 $('#fileIn').onchange = e => { openFiles(e.target.files); e.target.value = ''; };
 /* 드래그 앤 드롭 */
-let dragN = 0; const dz = document.createElement('div'); dz.id = 'drop'; dz.textContent = 'PDF를 여기에 놓으세요'; dz.classList.add('hide'); document.body.appendChild(dz);
-addEventListener('dragenter', e => { if ([...(e.dataTransfer?.types || [])].includes('Files')) { dragN++; dz.classList.remove('hide'); } });
-addEventListener('dragleave', () => { if (--dragN <= 0) { dragN = 0; dz.classList.add('hide'); } });
-addEventListener('dragover', e => e.preventDefault());
-addEventListener('drop', e => { e.preventDefault(); dragN = 0; dz.classList.add('hide'); if (e.dataTransfer.files.length) openFiles(e.dataTransfer.files); });
+const dz = document.createElement('div'); dz.id = 'drop'; dz.classList.add('hide'); document.body.appendChild(dz);
+let dzT = 0; const hasFiles = e => [...(e.dataTransfer?.types || [])].includes('Files');
+const hideDz = () => { clearTimeout(dzT); dz.classList.add('hide'); };
+addEventListener('dragover', e => {
+  if (!hasFiles(e)) return; e.preventDefault(); e.dataTransfer.dropEffect = 'copy';
+  const inLib = !$('#lib').classList.contains('hide');
+  dz.textContent = inLib ? 'PDF를 놓으면 책꽂이에 추가됩니다' : 'PDF를 놓으면 바로 열립니다';
+  dz.classList.remove('hide'); clearTimeout(dzT); dzT = setTimeout(hideDz, 160); /* 드래그가 멈추거나 창을 벗어나면 안내를 닫는다 */
+});
+addEventListener('drop', e => {
+  if (!hasFiles(e)) return; e.preventDefault(); hideDz();
+  const inLib = !$('#lib').classList.contains('hide');
+  openFiles(e.dataTransfer.files, inLib);
+});
 
 /* ---------- 상단 버튼, 키보드 ---------- */
 $('#bSide').onclick = toggleSide;
