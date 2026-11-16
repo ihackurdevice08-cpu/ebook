@@ -218,25 +218,31 @@ svg.i{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:1.75;str
 #drop{pointer-events:none;position:fixed;inset:0;z-index:300;background:rgba(11,58,111,.72);color:#fff;display:flex;align-items:center;justify-content:center;font-size:22px;font-weight:700}
 #loading{position:absolute;inset:0;z-index:55;background:rgba(0,0,0,.35);display:flex;align-items:center;justify-content:center;color:#fff;font-weight:700}
 
+/* 넘김 영역: 책 바깥쪽 가장자리. 글자 선택은 이 영역 밖에서만 시작된다 */
+.tz{display:none;position:absolute;top:0;bottom:0;width:13%;z-index:5;cursor:pointer;user-select:none;-webkit-user-select:none;opacity:0;transition:opacity .15s;background:linear-gradient(90deg,rgba(15,23,42,.10),rgba(15,23,42,0))}
+.tz.tl{left:0}.tz.tr{right:0;background:linear-gradient(270deg,rgba(15,23,42,.10),rgba(15,23,42,0))}
+.spread .tz{display:block}
+.spread.two .page:first-child .tz.tr,.spread.two .page:last-child .tz.tl{display:none}
+.tz:hover{opacity:1}
 /* 책장 넘김: 제본선은 고정하고 넘어가는 장만 움직인다 */
 .spread{position:relative;perspective:5200px;filter:none;box-shadow:0 10px 26px rgba(15,23,42,.22)}
 .snap{position:absolute;z-index:4;background:#fff;pointer-events:none;overflow:hidden}
 [data-page="sepia"] .snap{background:#F4ECD8}[data-page="dark"] .snap{background:#1B1F27}
 [data-page="sepia"] .snap canvas{filter:sepia(.42) saturate(.9) brightness(.98)}
 [data-page="dark"] .snap canvas{filter:invert(.92) hue-rotate(180deg) brightness(.95) contrast(.95)}
-.snap.leaf{z-index:6;overflow:visible;background:none;transform-style:preserve-3d;transition:transform .48s cubic-bezier(.5,0,.3,1)}
+.snap.leaf{z-index:6;overflow:visible;background:none;transform-style:preserve-3d;transition:transform .34s cubic-bezier(.45,0,.25,1)}
 .snap.leaf.fwd{transform-origin:left center}.snap.leaf.fwd.go{transform:rotateY(-180deg)}
 .snap.leaf.bwd{transform-origin:right center}.snap.leaf.bwd.go{transform:rotateY(180deg)}
 .snap .face{position:absolute;inset:0;backface-visibility:hidden;-webkit-backface-visibility:hidden;background:#fff;overflow:hidden}
 [data-page="sepia"] .snap .face{background:#F4ECD8}[data-page="dark"] .snap .face{background:#1B1F27}
 .snap .face.back{transform:rotateY(180deg)}
-.snap .shade{position:absolute;inset:0;pointer-events:none;opacity:0;transition:opacity .48s ease-in}
+.snap .shade{position:absolute;inset:0;pointer-events:none;opacity:0;transition:opacity .34s ease-in}
 .snap.fwd .front .shade{background:linear-gradient(90deg,rgba(0,0,0,0),rgba(0,0,0,.22))}
 .snap.bwd .front .shade{background:linear-gradient(270deg,rgba(0,0,0,0),rgba(0,0,0,.22))}
 .snap.go .front .shade{opacity:1}
-.snap .back .shade{opacity:1;background:rgba(0,0,0,.18);transition:opacity .48s ease-out}
+.snap .back .shade{opacity:1;background:rgba(0,0,0,.18);transition:opacity .34s ease-out}
 .snap.go .back .shade{opacity:0}
-.snap.cast{z-index:5;background:none;opacity:1;transition:opacity .48s ease-in}
+.snap.cast{z-index:5;background:none;opacity:1;transition:opacity .34s ease-in}
 .snap.cast.fwd{background:linear-gradient(90deg,rgba(0,0,0,.26),rgba(0,0,0,0) 40%)}
 .snap.cast.bwd{background:linear-gradient(270deg,rgba(0,0,0,.26),rgba(0,0,0,0) 40%)}
 .snap.cast.go{opacity:0}
@@ -544,7 +550,7 @@ function computeScale() {
 function sizeWrap(po) { const [w, h] = pageDims(po.num); po.wrap.style.width = w * S.scale + 'px'; po.wrap.style.height = h * S.scale + 'px'; po.wrap.style.setProperty('--scale-factor', S.scale); }
 function newPage(n) {
   const wrap = document.createElement('div'); wrap.className = 'page'; wrap.dataset.p = n;
-  wrap.innerHTML = '<canvas></canvas><div class="layer hlLayer"></div><div class="layer srLayer"></div><div class="textLayer"></div>';
+  wrap.innerHTML = '<canvas></canvas><div class="layer hlLayer"></div><div class="layer srLayer"></div><div class="textLayer"></div><div class="tz tl" data-d="-1" title="이전 쪽"></div><div class="tz tr" data-d="1" title="다음 쪽"></div>';
   const po = { num: n, wrap, canvas: wrap.children[0], hl: wrap.children[1], sr: wrap.children[2], tl: wrap.children[3], state: 'idle', tok: 0, task: null };
   wrap._po = po; sizeWrap(po); return po;
 }
@@ -572,6 +578,7 @@ function layout(anim) {
     const sp = document.createElement('div'); sp.className = 'spread' + (S.mode === 'double' ? ' double' : '');
     if (anim) sp.classList.add(anim);
     const nums = spreadNums(S.cur);
+    if (nums.length === 2) sp.classList.add('two');
     nums.forEach(n => { const po = newPage(n); S.pages.push(po); sp.appendChild(po.wrap); });
     pagesEl.appendChild(sp);
     S.cur = nums[0];
@@ -631,7 +638,7 @@ function goTo(n, opts = {}) {
   else {
     const before = spreadNums(S.cur)[0], after = spreadNums(n)[0];
     if (before === after && !opts.force) { S.cur = n; updateUI(); persistBook(); return; }
-    if (S.flipping) return;
+    if (S.flipping && S.finish) S.finish(); /* 넘기는 중에 또 누르면 진행 중인 장을 즉시 마무리하고 다음으로 넘어간다 */
     const snaps = S.mode === 'double' && S.turn === 'page' && before !== after && !opts.force ? snapPages() : null;
     S.cur = n; layout(snaps && spreadNums(n).length === 2 ? '' : (S.turn === 'none' ? '' : (opts.anim || (after > before ? 'anim-next' : 'anim-prev')))); persistBook();
     if (snaps && spreadNums(n).length === 2) flip(snaps, after > before ? 1 : -1);
@@ -646,7 +653,7 @@ function snapPages() {
 }
 function snapEl(sn, cls) { const d = document.createElement('div'); d.className = 'snap ' + (cls || ''); Object.assign(d.style, { left: sn.left + 'px', top: sn.top + 'px', width: sn.w + 'px', height: sn.h + 'px' }); return d; }
 const fill = c => { c.style.cssText = 'width:100%;height:100%;display:block'; return c; };
-const FLIP_MS = 480;
+const FLIP_MS = 340;
 function flip(old, dir) {
   const sp = pagesEl.querySelector('.spread'); if (!sp || S.pages.length !== 2) return;
   S.flipping = true;
@@ -663,11 +670,12 @@ function flip(old, dir) {
   const cast = snapEl({ left: turning.left, top: turning.top, w: turning.w, h: turning.h }, 'cast ' + (dir > 0 ? 'fwd' : 'bwd'));
   sp.append(still, cast, leaf);
   const target = dir > 0 ? nL : nR, t0 = performance.now();
-  const clean = () => { still.remove(); cast.remove(); leaf.remove(); S.flipping = false; };
+  const clean = () => { clearTimeout(S.flipT); still.remove(); cast.remove(); leaf.remove(); S.flipping = false; S.finish = null; };
+  S.finish = clean;
   const paintBack = () => { if (target.state !== 'done') return false; bc.width = target.canvas.width; bc.height = target.canvas.height; bc.getContext('2d').drawImage(target.canvas, 0, 0); return true; };
   const tick = () => {
     if (!sp.isConnected) return;
-    if (!S.pages.every(p => p.state === 'done') && performance.now() - t0 < 120) { S.flipT = setTimeout(tick, 20); return; }
+    if (!S.pages.every(p => p.state === 'done') && performance.now() - t0 < 60) { S.flipT = setTimeout(tick, 10); return; }
     leaf.classList.add('go'); cast.classList.add('go');
     /* 뒷면은 넘어가는 중간(장이 세로로 섰을 때)에 새 쪽으로 채운다 */
     setTimeout(() => { if (!paintBack()) setTimeout(paintBack, 90); }, FLIP_MS * .45);
@@ -912,20 +920,14 @@ function afterPointer(e) {
   hidePop();
   tapTurn(e);
 }
-/* 책장 좌우 클릭으로 넘기기 (한 쪽, 두 쪽 보기) */
+/* 책장 넘김: 책 바깥쪽 가장자리(전용 영역)와 책 밖 빈 곳을 누르면 넘어간다. 글자 위는 드래그(선택) 전용이라 겹치지 않는다 */
 function tapTurn(e) {
   if (S.mode === 'scroll' || !S.pdf || !viewer.contains(e.target) || e.target.closest('.ribbon,#sbar')) return;
   if (Math.hypot(e.clientX - downX, e.clientY - downY) > 6) return;
-  if (turnT) { clearTimeout(turnT); turnT = 0; return; }
-  const x = e.clientX, y = e.clientY, vr = viewer.getBoundingClientRect();
-  if (x > vr.right - 12 || y > vr.bottom - 12) return;
-  const po = S.pages.find(p => { const b = p.wrap.getBoundingClientRect(); return x >= b.left && x <= b.right && y >= b.top && y <= b.bottom; });
-  let dir = 0;
-  if (po) { const b = po.wrap.getBoundingClientRect(), r = (x - b.left) / b.width, idx = S.pages.indexOf(po);
-    if (S.mode === 'double' && S.pages.length === 2) dir = idx === 0 ? -1 : 1; else dir = r < .3 ? -1 : r > .7 ? 1 : 0; }
-  else dir = x < vr.left + vr.width / 2 ? -1 : 1;
-  if (!dir) return;
-  turnT = setTimeout(() => { turnT = 0; step(dir); }, 260);
+  const z = e.target.closest && e.target.closest('.tz'); let dir = 0;
+  if (z) dir = +z.dataset.d;
+  else if (!e.target.closest('.page')) { const vr = viewer.getBoundingClientRect(); if (e.clientX > vr.right - 14 || e.clientY > vr.bottom - 14) return; dir = e.clientX < vr.left + vr.width / 2 ? -1 : 1; }
+  if (dir) step(dir);
 }
 document.addEventListener('selectionchange', () => { clearTimeout(selT); selT = setTimeout(() => { if (mouseDown) return; const sel = readSelection(); if (sel) { curSel = sel; showSelPop(); } }, 450); });
 viewer.addEventListener('dblclick', e => { clearTimeout(turnT); turnT = 0;
