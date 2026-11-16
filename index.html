@@ -433,13 +433,14 @@ let saveT = 0;
 
 /* ---------- 설정 ---------- */
 async function loadSettings() {
-  const s = (await safe(DB.get('kv', 'settings'))) || {};
-  Object.assign(S, { mode: s.mode || (innerWidth > 820 ? 'double' : 'single'), fit: s.fit || 'page', zoom: s.zoom || 1, cover: s.cover ?? true, dbl: s.dbl ?? true, page: s.page || 'white', pal: s.pal || 'navy', ui: s.ui || 'light', lastColor: s.lastColor || 'y', turn: s.turn || 'page', side: s.side ?? (innerWidth > 820) });
+  let s = (await safe(DB.get('kv', 'settings'))) || {};
+  if (s.v !== 3) { s = Object.assign({}, s, { mode: undefined, cover: false, v: 3 }); } /* 이전 버전에서 저장된 보기 방식은 새 기본값(두 쪽 펼침)으로 초기화 */
+  Object.assign(S, { mode: s.mode || (innerWidth > 560 ? 'double' : 'single'), fit: s.fit || 'page', zoom: s.zoom || 1, cover: s.cover ?? true, dbl: s.dbl ?? true, page: s.page || 'white', pal: s.pal || 'navy', ui: s.ui || 'light', lastColor: s.lastColor || 'y', turn: s.turn || 'page', side: s.side ?? (innerWidth > 820) });
   S.words = (await safe(DB.get('kv', 'words'))) || [];
   applyTheme();
   $('#side').classList.toggle('closed', !S.side);
 }
-const saveSettings = () => safe(DB.put('kv', { mode: S.mode, fit: S.fit, zoom: S.zoom, cover: S.cover, dbl: S.dbl, page: S.page, pal: S.pal, ui: S.ui, lastColor: S.lastColor, turn: S.turn, side: S.side }, 'settings'));
+const saveSettings = () => safe(DB.put('kv', { mode: S.mode, fit: S.fit, zoom: S.zoom, cover: S.cover, v: 3, dbl: S.dbl, page: S.page, pal: S.pal, ui: S.ui, lastColor: S.lastColor, turn: S.turn, side: S.side }, 'settings'));
 function applyTheme() { app.dataset.pal = S.pal; app.dataset.page = S.page; app.dataset.ui = S.ui; document.body.dataset.pal = S.pal; document.body.dataset.ui = S.ui; $('#pop').dataset.ui = $('#noteEd').dataset.ui = $('#menu').dataset.ui = $('#sbar').dataset.ui = S.ui; }
 
 /* ---------- 알림 ---------- */
