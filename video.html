@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>데이터 분석을 통한 문제 해결</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css">
+<style>
+:root{--ink:#1D1D1F;--menu:#3C3C43;--sub:#9D9DA0;--line:#E5E5EA;--navy:#0B3A6F}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%}
+body{font-family:Pretendard,"Noto Sans KR","Noto Sans CJK KR",Helvetica,sans-serif;color:var(--ink);letter-spacing:-0.32px;background:#fff;display:flex;flex-direction:column;min-height:100vh}
+header{height:61px;border-bottom:1px solid var(--line);display:flex;align-items:center;padding:0 80px}
+.name{font-size:16px;font-weight:700;color:var(--ink);text-decoration:none;white-space:nowrap}
+nav{display:flex;margin-left:56px;height:100%}
+nav a{display:flex;align-items:center;height:100%;padding:0 20px;font-size:14px;font-weight:600;color:var(--menu);text-decoration:none;position:relative}
+nav a.on{color:var(--ink)}
+nav a.on::after{content:"";position:absolute;left:20px;right:20px;bottom:-1px;height:2px;background:var(--navy)}
+.bgm{margin-left:auto;font:600 14px Pretendard,"Noto Sans KR","Noto Sans CJK KR",sans-serif;color:var(--menu);background:none;border:1px solid var(--line);height:32px;padding:0 14px;cursor:pointer}
+main{flex:1;display:flex;align-items:center;gap:72px;padding:0 80px}
+.txt{flex:0 0 560px;padding-bottom:0}
+.img{flex:1;min-width:0;height:520px}
+.img svg{display:block;width:100%;height:100%;font-family:inherit;letter-spacing:-0.3px}
+.img img{display:block;width:100%;height:100%;object-fit:cover}
+h1{font-size:44px;line-height:1.35;font-weight:700;letter-spacing:-1px}
+.st,.ar{opacity:0;animation:in .6s cubic-bezier(.2,.7,.2,1) forwards}
+.st{transform:translateY(14px);animation-delay:calc(.3s + var(--i)*.55s)}
+.ar{animation-name:fade;animation-delay:calc(.3s + var(--i)*.55s + .35s)}
+@keyframes in{to{opacity:1;transform:none}}
+@keyframes fade{to{opacity:1}}
+@media (prefers-reduced-motion:reduce){.st,.ar{animation:none;opacity:1;transform:none}}
+main.v{display:block;padding:40px 80px 48px;max-width:1280px;margin:0 auto;width:100%}
+video{display:block;width:100%;aspect-ratio:16/9;background:#000}
+.cap{margin-top:16px;font-size:14px;color:var(--sub)}
+@media(max-width:800px){header{padding:0 20px}nav{margin-left:16px}nav a{padding:0 10px}.name{display:none}main.v{padding:20px}}
+</style>
+</head>
+<body>
+<header>
+  <a class="name" href="index.html">데이터 분석을 통한 문제 해결</a>
+  <nav>
+    <a href="index.html">홈</a>
+    <a href="report.html">보고서</a>
+    <a class="on" href="video.html">영상</a>
+    <a href="process.html">작업 과정</a>
+  </nav>
+  <button class="bgm" type="button">BGM 끄기</button>
+</header>
+<main class="v">
+  <video id="v" controls preload="metadata" playsinline src="assets/video.mp4"></video>
+  <p class="cap">약 2분 17초 · 소리 포함</p>
+</main>
+<script src="site.js"></script>
+<script>
+(function(){var v=document.getElementById('v');
+v.addEventListener('play',function(){window.dispatchEvent(new CustomEvent('bgm:pause'))});
+})();
+</script>
+</body>
+</html>
